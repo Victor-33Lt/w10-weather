@@ -149,6 +149,7 @@
   margin-top: 4px;
 }
 
+/* 검색창 기본 (라이트 모드 / 주간 테마) */
 .search-input-box {
   display: flex;
   align-items: center;
@@ -160,18 +161,13 @@
   transition: all 0.2s ease;
 }
 
-.theme-night .search-input-box {
-  background: #1e293b;
-  border-color: #475569;
-}
-
 .search-input-box:focus-within {
   border-color: #2563eb;
   box-shadow: 0 4px 16px rgba(37, 99, 235, 0.2);
 }
 
 .search-icon {
-  color: #94a3b8;
+  color: #64748b;
   margin-right: 10px;
   flex-shrink: 0;
 }
@@ -183,11 +179,13 @@
   outline: none;
   background: transparent;
   font-size: 15px;
-  color: var(--text-main);
+  font-weight: 500;
+  color: #0f172a; /* 라이트 모드 기본: 선명한 흑청색 */
+  caret-color: #2563eb;
 }
 
 .search-input::placeholder {
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .search-loader {
@@ -199,7 +197,7 @@
 .search-clear-btn {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: #64748b;
   cursor: pointer;
   padding: 4px;
   display: flex;
@@ -209,10 +207,10 @@
 }
 
 .search-clear-btn:hover {
-  color: var(--text-main);
+  color: #0f172a;
 }
 
-/* 검색 드롭다운 */
+/* 검색 드롭다운 (라이트 모드 기본) */
 .search-dropdown {
   position: absolute;
   top: calc(100% + 6px);
@@ -231,12 +229,6 @@
   text-align: left;
 }
 
-.theme-night .search-dropdown {
-  background: #1e293b;
-  border-color: #334155;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
-}
-
 .search-item {
   display: flex;
   align-items: center;
@@ -249,10 +241,6 @@
 
 .search-item:hover {
   background: #f1f5f9;
-}
-
-.theme-night .search-item:hover {
-  background: #334155;
 }
 
 .dropdown-pin {
@@ -268,19 +256,102 @@
 .search-item-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-main);
+  color: #0f172a;
 }
 
 .search-item-meta {
   font-size: 12px;
-  color: var(--text-muted);
+  color: #64748b;
 }
 
 .search-no-result {
   padding: 16px;
   text-align: center;
   font-size: 13px;
-  color: var(--text-muted);
+  color: #64748b;
+}
+
+/* 다크 테마 (.theme-night) 전용 스타일 */
+.theme-night .search-input-box {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+.theme-night .search-input-box:focus-within {
+  border-color: #60a5fa;
+  box-shadow: 0 4px 16px rgba(96, 165, 250, 0.25);
+}
+
+.theme-night .search-icon {
+  color: #94a3b8;
+}
+
+.theme-night .search-input {
+  color: #f8fafc; /* 다크 모드: 선명한 흰색 */
+  caret-color: #60a5fa;
+}
+
+.theme-night .search-input::placeholder {
+  color: #94a3b8;
+}
+
+.theme-night .search-clear-btn {
+  color: #94a3b8;
+}
+
+.theme-night .search-clear-btn:hover {
+  color: #f8fafc;
+}
+
+.theme-night .search-dropdown {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.theme-night .search-item:hover {
+  background: #334155;
+}
+
+.theme-night .search-item-name {
+  color: #f8fafc;
+}
+
+.theme-night .search-item-meta {
+  color: #94a3b8;
+}
+
+.theme-night .search-no-result {
+  color: #94a3b8;
+}
+
+/* 시스템 다크 모드 (OS 기본 다크) 대응 */
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-sunny):not(.theme-cloudy):not(.theme-rain):not(.theme-snow) .search-input-box {
+    background: #1e293b;
+    border-color: #475569;
+  }
+
+  :root:not(.theme-sunny):not(.theme-cloudy):not(.theme-rain):not(.theme-snow) .search-input {
+    color: #f8fafc;
+  }
+
+  :root:not(.theme-sunny):not(.theme-cloudy):not(.theme-rain):not(.theme-snow) .search-input::placeholder {
+    color: #94a3b8;
+  }
+
+  :root:not(.theme-sunny):not(.theme-cloudy):not(.theme-rain):not(.theme-snow) .search-dropdown {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  :root:not(.theme-sunny):not(.theme-cloudy):not(.theme-rain):not(.theme-snow) .search-item-name {
+    color: #f8fafc;
+  }
+
+  :root:not(.theme-sunny):not(.theme-cloudy):not(.theme-rain):not(.theme-snow) .search-item-meta {
+    color: #94a3b8;
+  }
 }
 
 /* 주요 도시 프리셋 네비게이션 */
