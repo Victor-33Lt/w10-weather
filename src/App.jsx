@@ -1,21 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  Sun,
-  SunDim,
-  CloudSun,
-  Cloud,
-  CloudFog,
-  CloudDrizzle,
-  CloudRain,
-  Snowflake,
-  CloudLightning,
-  Wind,
-  Droplets,
-  Thermometer,
+  Activity,
   RefreshCw,
   AlertTriangle,
   MapPin,
-  Activity
+  History,
+  Trash2
 } from 'lucide-react'
 import {
   DEFAULT_CITIES,
@@ -24,24 +14,14 @@ import {
   fetchWeatherData,
   fetchAirQualityData
 } from './api/weather'
+import CurrentWeather from './components/CurrentWeather'
+import AirQualityCard from './components/AirQualityCard'
+import HourlyChart from './components/HourlyChart'
+import WeeklyForecast from './components/WeeklyForecast'
+import CitySearch from './components/CitySearch'
 import './App.css'
 
-const ICON_MAP = {
-  Sun,
-  SunDim,
-  CloudSun,
-  Cloud,
-  CloudFog,
-  CloudDrizzle,
-  CloudRain,
-  Snowflake,
-  CloudLightning
-}
-
-function WeatherIcon({ name, size = 52, color }) {
-  const IconComponent = ICON_MAP[name] || Cloud
-  return <IconComponent size={size} color={color} />
-}
+const RECENT_CITIES_KEY = 'w10_recent_cities'
 
 export default function App() {
   const [selectedCity, setSelectedCity] = useState(DEFAULT_CITIES[0])
@@ -51,6 +31,61 @@ export default function App() {
   const [error, setError] = useState(null)
   const [reloadTrigger, setReloadTrigger] = useState(0)
 
+  // 옵션 D: 섭씨/화씨 토글 단위 상태 ('C' | 'F')
+  const [tempUnit, setTempUnit] = useState('C')
+
+  // 옵션 B: 최근 본 도시 localStorage 관리
+  const [recentCities, setRecentCities] = useState(() => {
+    try {
+      const saved = localStorage.getItem(RECENT_CITIES_KEY)
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  // 기온 변환 헬퍼 (섭씨 ↔ 화씨)
+  const convertTemp = useCallback(
+    (celsius) => {
+      if (celsius === undefined || celsius === null || isNaN(celsius)) return '-'
+      if (tempUnit === 'F') {
+        return Math.round(celsius * 1.8 + 32)
+      }
+      return Math.round(celsius)
+    },
+    [tempUnit]
+  )
+
+  // 도시 선택 시 최근 목록 저장
+  const handleSelectCity = useCallback((city) => {
+    setError(null)
+    setIsLoading(true)
+    setSelectedCity(city)
+
+    setRecentCities((prev) => {
+      const filtered = prev.filter(
+        (c) => !(Math.abs(c.lat - city.lat) < 0.01 && Math.abs(c.lon - city.lon) < 0.01)
+      )
+      const updated = [city, ...filtered].slice(0, 5)
+      try {
+        localStorage.setItem(RECENT_CITIES_KEY, JSON.stringify(updated))
+      } catch (e) {
+        console.error('localStorage 저장 실패:', e)
+      }
+      return updated
+    })
+  }, [])
+
+  const handleClearRecent = () => {
+    setRecentCities([])
+    try {
+      localStorage.removeItem(RECENT_CITIES_KEY)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // 기상 및 공기질 API 데이터 페칭
   useEffect(() => {
     let ignore = false
 
@@ -77,12 +112,6 @@ export default function App() {
     }
   }, [selectedCity, reloadTrigger])
 
-  const handleCitySelect = (city) => {
-    setError(null)
-    setIsLoading(true)
-    setSelectedCity(city)
-  }
-
   const handleRetry = () => {
     setError(null)
     setIsLoading(true)
@@ -91,190 +120,162 @@ export default function App() {
 
   const currentWeather = weatherData?.current
   const weatherInfo = currentWeather ? getWeatherInfo(currentWeather.weather_code) : null
-
   const currentAir = airQualityData?.current
   const airStatus = currentAir ? getAirQualityStatus(currentAir.pm10, currentAir.pm2_5) : null
 
+  // 옵션 A: 날씨 상태 및 낮/밤 기반 동적 비주얼 테마 클래스 산출
+  const themeClass = useMemo(() => {
+    if (!currentWeather) return 'theme-default'
+    if (currentWeather.is_day === 0) return 'theme-night'
+
+    const code = currentWeather.weather_code
+    if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(code)) return 'theme-rain'
+    if ([71, 73, 75, 77].includes(code)) return 'theme-snow'
+    if ([2, 3, 45, 48].includes(code)) return 'theme-cloudy'
+    return 'theme-sunny'
+  }, [currentWeather])
+
   return (
-    <div className="weather-app">
+    <div className={`weather-app ${themeClass}`}>
       <header className="app-header">
-        <div className="header-badge">
-          <Activity size={16} /> 실시간 기상 관측소
+        <div className="header-top-row">
+          <div className="header-badge">
+            <Activity size={15} /> 실시간 기상 관측 대시보드
+          </div>
+
+          {/* 옵션 D: 섭씨/화씨 단위 변환 토글 스위치 */}
+          <div className="temp-unit-toggle">
+            <button
+              type="button"
+              className={`unit-btn ${tempUnit === 'C' ? 'active' : ''}`}
+              onClick={() => setTempUnit('C')}
+              aria-label="섭씨 온도 (°C)"
+            >
+              °C
+            </button>
+            <button
+              type="button"
+              className={`unit-btn ${tempUnit === 'F' ? 'active' : ''}`}
+              onClick={() => setTempUnit('F')}
+              aria-label="화씨 온도 (°F)"
+            >
+              °F
+            </button>
+          </div>
         </div>
-        <h1 className="app-title">스마트 날씨 & 미세먼지 대시보드</h1>
+
+        <h1 className="app-title">스마트 날씨 & 미세먼지</h1>
         <p className="app-subtitle">
-          Open-Meteo 전 세계 기상 위성 API 실시간 연동
+          Open-Meteo 전 세계 고해상도 기상 위성 API 실시간 연동
         </p>
+
+        {/* 4단계: 도시 검색창 컴포넌트 (400ms 디바운스 적용) */}
+        <CitySearch onSelectCity={handleSelectCity} />
 
         {/* 주요 도시 퀵 선택 바 */}
         <nav className="city-nav" aria-label="주요 도시 선택">
-          {DEFAULT_CITIES.map((city) => (
-            <button
-              key={city.name}
-              type="button"
-              className={`city-pill ${selectedCity.name === city.name ? 'active' : ''}`}
-              onClick={() => handleCitySelect(city)}
-            >
-              <MapPin size={14} />
-              {city.name}
-            </button>
-          ))}
+          {DEFAULT_CITIES.map((city) => {
+            const isSelected =
+              Math.abs(selectedCity.lat - city.lat) < 0.01 &&
+              Math.abs(selectedCity.lon - city.lon) < 0.01
+            return (
+              <button
+                key={city.name}
+                type="button"
+                className={`city-pill ${isSelected ? 'active' : ''}`}
+                onClick={() => handleSelectCity(city)}
+              >
+                <MapPin size={13} />
+                {city.name}
+              </button>
+            )
+          })}
         </nav>
+
+        {/* 옵션 B: 최근 본 도시 뱃지 */}
+        {recentCities.length > 0 && (
+          <div className="recent-cities-bar">
+            <span className="recent-title">
+              <History size={13} /> 최근 본 도시:
+            </span>
+            <div className="recent-chips">
+              {recentCities.map((c) => (
+                <button
+                  key={`${c.name}-${c.lat}`}
+                  type="button"
+                  className="recent-chip"
+                  onClick={() => handleSelectCity(c)}
+                >
+                  {c.name}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="clear-recent-btn"
+                onClick={handleClearRecent}
+                title="최근 기록 지우기"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="dashboard-content">
         {isLoading && (
           <div className="state-box loading">
-            <RefreshCw className="spin-icon" size={36} />
-            <p><strong>{selectedCity.name}</strong>의 최신 기상 데이터를 수신하고 있습니다...</p>
+            <RefreshCw className="spin-icon" size={38} />
+            <p>
+              <strong>{selectedCity.name}</strong>의 최신 기상 데이터를 수신하고 있습니다...
+            </p>
           </div>
         )}
 
         {error && !isLoading && (
           <div className="state-box error">
-            <AlertTriangle size={36} color="#ef4444" />
+            <AlertTriangle size={38} color="#ef4444" />
             <p className="error-title">기상 정보를 가져오지 못했습니다.</p>
             <p className="error-desc">{error}</p>
-            <button
-              type="button"
-              className="retry-btn"
-              onClick={handleRetry}
-            >
+            <button type="button" className="retry-btn" onClick={handleRetry}>
               <RefreshCw size={14} /> 다시 시도
             </button>
           </div>
         )}
 
         {!isLoading && !error && currentWeather && currentAir && (
-          <div className="cards-grid">
-            {/* 현재 날씨 카드 */}
-            <article className="weather-card">
-              <div className="card-top">
-                <div>
-                  <span className="card-badge">현재 날씨</span>
-                  <h2 className="city-display">{selectedCity.name}</h2>
-                </div>
-                <div
-                  className="weather-icon-wrapper"
-                  style={{ backgroundColor: `${weatherInfo.color}18` }}
-                >
-                  <WeatherIcon name={weatherInfo.icon} color={weatherInfo.color} size={48} />
-                </div>
-              </div>
+          <div className="dashboard-grid">
+            {/* 현재 날씨 & 미세먼지 상단 그리드 */}
+            <div className="cards-grid">
+              <CurrentWeather
+                city={selectedCity}
+                currentWeather={currentWeather}
+                weatherInfo={weatherInfo}
+                tempUnit={tempUnit}
+                convertTemp={convertTemp}
+              />
+              <AirQualityCard
+                airQuality={airQualityData}
+                airStatus={airStatus}
+              />
+            </div>
 
-              <div className="temp-section">
-                <div className="main-temp">
-                  <span className="temp-number">
-                    {Math.round(currentWeather.temperature_2m)}
-                  </span>
-                  <span className="temp-unit">°C</span>
-                </div>
-                <div
-                  className="weather-label-pill"
-                  style={{ backgroundColor: `${weatherInfo.color}22`, color: weatherInfo.color }}
-                >
-                  {weatherInfo.label}
-                </div>
-              </div>
+            {/* 24시간 시간별 기온 차트 */}
+            {weatherData?.hourly && (
+              <HourlyChart
+                hourly={weatherData.hourly}
+                tempUnit={tempUnit}
+                convertTemp={convertTemp}
+              />
+            )}
 
-              <div className="weather-metrics">
-                <div className="metric-item">
-                  <div className="metric-icon"><Thermometer size={18} /></div>
-                  <div className="metric-info">
-                    <span className="metric-name">체감 온도</span>
-                    <span className="metric-value">
-                      {Math.round(currentWeather.apparent_temperature)}°C
-                    </span>
-                  </div>
-                </div>
-
-                <div className="metric-item">
-                  <div className="metric-icon"><Droplets size={18} /></div>
-                  <div className="metric-info">
-                    <span className="metric-name">습도</span>
-                    <span className="metric-value">
-                      {currentWeather.relative_humidity_2m}%
-                    </span>
-                  </div>
-                </div>
-
-                <div className="metric-item">
-                  <div className="metric-icon"><Wind size={18} /></div>
-                  <div className="metric-info">
-                    <span className="metric-name">풍속</span>
-                    <span className="metric-value">
-                      {currentWeather.wind_speed_10m} <small>km/h</small>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </article>
-
-            {/* 미세먼지 카드 */}
-            <article className="air-card">
-              <div className="card-top">
-                <div>
-                  <span className="card-badge">대기질 지수</span>
-                  <h2 className="city-display">미세먼지 정보</h2>
-                </div>
-                <span
-                  className="air-status-badge"
-                  style={{ backgroundColor: airStatus.badgeColor }}
-                >
-                  {airStatus.status}
-                </span>
-              </div>
-
-              <p className="air-notice">
-                환경부 4단계 대기환경 기준 적용
-              </p>
-
-              <div className="air-metrics">
-                <div className="air-metric-box">
-                  <div className="air-metric-header">
-                    <span className="pollutant-name">미세먼지 (PM10)</span>
-                    <span className="pollutant-unit">µg/m³</span>
-                  </div>
-                  <div className="pollutant-val">
-                    {Math.round(currentAir.pm10)}
-                  </div>
-                  <div className="pollutant-bar">
-                    <div
-                      className="pollutant-progress"
-                      style={{
-                        width: `${Math.min(100, (currentAir.pm10 / 150) * 100)}%`,
-                        backgroundColor: airStatus.badgeColor
-                      }}
-                    />
-                  </div>
-                  <span className="air-threshold-desc">
-                    {currentAir.pm10 <= 30 ? '좋음 (0~30)' : currentAir.pm10 <= 80 ? '보통 (31~80)' : currentAir.pm10 <= 150 ? '나쁨 (81~150)' : '매우 나쁨 (151~)'}
-                  </span>
-                </div>
-
-                <div className="air-metric-box">
-                  <div className="air-metric-header">
-                    <span className="pollutant-name">초미세먼지 (PM2.5)</span>
-                    <span className="pollutant-unit">µg/m³</span>
-                  </div>
-                  <div className="pollutant-val">
-                    {Math.round(currentAir.pm2_5)}
-                  </div>
-                  <div className="pollutant-bar">
-                    <div
-                      className="pollutant-progress"
-                      style={{
-                        width: `${Math.min(100, (currentAir.pm2_5 / 75) * 100)}%`,
-                        backgroundColor: airStatus.badgeColor
-                      }}
-                    />
-                  </div>
-                  <span className="air-threshold-desc">
-                    {currentAir.pm2_5 <= 15 ? '좋음 (0~15)' : currentAir.pm2_5 <= 35 ? '보통 (16~35)' : currentAir.pm2_5 <= 75 ? '나쁨 (36~75)' : '매우 나쁨 (76~)'}
-                  </span>
-                </div>
-              </div>
-            </article>
+            {/* 7일간 주간 예보 */}
+            {weatherData?.daily && (
+              <WeeklyForecast
+                daily={weatherData.daily}
+                convertTemp={convertTemp}
+              />
+            )}
           </div>
         )}
       </main>
