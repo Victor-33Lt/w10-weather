@@ -6,7 +6,8 @@ export default function CurrentWeather({
   currentWeather,
   weatherInfo,
   tempUnit = 'C',
-  convertTemp
+  convertTemp,
+  todayPrecipProb
 }) {
   if (!currentWeather || !weatherInfo) return null
 
@@ -82,9 +83,12 @@ export default function CurrentWeather({
         <div className="metric-item">
           <div className="metric-icon"><CloudRain size={18} /></div>
           <div className="metric-info">
-            <span className="metric-name">강수량</span>
+            <span className="metric-name">강수량 / 강수확률</span>
             <span className="metric-value">
               {currentWeather.precipitation || 0} <small>mm</small>
+              {todayPrecipProb !== undefined && todayPrecipProb !== null && (
+                <span className="precip-prob-badge"> ({todayPrecipProb}%)</span>
+              )}
             </span>
           </div>
         </div>

@@ -253,6 +253,7 @@ export default function App() {
                 weatherInfo={weatherInfo}
                 tempUnit={tempUnit}
                 convertTemp={convertTemp}
+                todayPrecipProb={weatherData?.daily?.precipitation_probability_max?.[0]}
               />
               <AirQualityCard
                 airQuality={airQualityData}

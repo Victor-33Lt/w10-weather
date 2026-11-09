@@ -578,6 +578,12 @@
   color: var(--text-main);
 }
 
+.precip-prob-badge {
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* 대기질 팁 박스 */
 .air-status-badge {
   padding: 6px 14px;
